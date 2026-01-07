@@ -204,6 +204,10 @@ function spawnAntekAntek(path, count, type) {
 				s_min = 10;
 				s_max = 25;
 				y = 20;
+			} else if (type === "kelp") {
+				s_min = 10;
+				s_max = 25;
+				y = 30;
 			} else {
 				s_min = 1;
 				s_max = 1;
@@ -224,6 +228,7 @@ spawnAntekAntek("./models/Rock 2.glb", 40, "rock");
 spawnAntekAntek("./models/Rock 3.glb", 40, "rock");
 spawnAntekAntek("./models/Coral 1.glb", 15, "coral");
 spawnAntekAntek("./models/Coral 2.glb", 10, "coralB");
+spawnAntekAntek("./models/Kelp.glb", 25, "kelp");
 spawnAntekAntek("./models/Starfish.glb", 30, "else");
 // END ANTEK ANTEK SEAFLOOR
 
