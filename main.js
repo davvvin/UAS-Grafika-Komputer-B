@@ -102,7 +102,7 @@ function applyLighting(mode) {
 btn.addEventListener("click", () => applyLighting(MODE === "day" ? "night" : "day"));
 applyLighting("day");
 
-const WORLD_RADIUS = 160;
+const WORLD_RADIUS = 250;
 
 // LANTAI
 const seafloorMat = new THREE.MeshStandardMaterial({
@@ -183,6 +183,31 @@ const x_max = 200;
 const z_min = -200;
 const z_max = 200;
 
+// ===============================================================
+const obstacles = [];
+const PLAYER_R = 1;        // radius tabrakan kamera (ubah kalau terlalu “nabrak jauh”)
+const Y_RANGE = 10;        // kalau kamera jauh lebih tinggi dari objek, dia boleh lewat
+
+function addObstacle(x, y, z, r) {
+  obstacles.push({ x, y, z, r });
+}
+
+function hitObstacle(x, y, z) {
+  for (let i = 0; i < obstacles.length; i++) {
+    const o = obstacles[i];
+
+    // kalau terlalu beda tinggi, skip (biar bisa "terbang" lewat atas)
+    if (Math.abs(y - o.y) > Y_RANGE) continue;
+
+    const dx = x - o.x;
+    const dz = z - o.z;
+    const rr = (PLAYER_R + o.r);
+    if (dx * dx + dz * dz < rr * rr) return true;
+  }
+  return false;
+}
+// ===============================================================
+
 function spawnAntekAntek(path, count, type) {
 	gltfLoader.load(path, (g) => {
 		for (let i = 0; i < count; i++) {
@@ -195,40 +220,50 @@ function spawnAntekAntek(path, count, type) {
 			if (type === "coral") {
 				s_min = 30;
 				s_max = 50;
-				y = 10;
 			} else if (type === "rock") {
 				s_min = 50;
 				s_max = 100;
-				y = 0;
 			} else if (type === "coralB") {
 				s_min = 10;
 				s_max = 25;
-				y = 20;
 			} else if (type === "kelp") {
-				s_min = 10;
-				s_max = 25;
-				y = 30;
+				s_min = 5;
+				s_max = 5;
 			} else {
 				s_min = 1;
 				s_max = 1;
-				y = 0;
 			}
 
-			antek.position.set(randm(x_min, x_max), y, randm(z_min, z_max));
+			antek.position.set(randm(x_min, x_max), 0, randm(z_min, z_max));
 			const s = randm(s_min, s_max);
 			antek.scale.set(s, s, s);
 			antek.rotation.y = randm(0, Math.PI * 2);
+
+			antek.updateMatrixWorld(true);
+			const box = new THREE.Box3().setFromObject(antek);
+			const floorY = seafloor.position.y;
+			const eps = 0.02;
+
+			// geser supaya titik paling bawah (box.min.y) tepat di atas lantai
+			antek.position.y += (floorY - box.min.y) + eps;
+
 			scene.add(antek);
+			let r;
+      if (type === "rock") r = s * 0.25;
+      else if (type === "coral" || type === "coralB") r = s * 0.18;
+      else r = s * 0.10;
+
+      addObstacle(antek.position.x, antek.position.y, antek.position.z, r);
 		}
 	});
 }
 
+spawnAntekAntek("./models/Kelp.glb", 200, "kelp");
 spawnAntekAntek("./models/Rock 1.glb", 40, "rock");
 spawnAntekAntek("./models/Rock 2.glb", 40, "rock");
 spawnAntekAntek("./models/Rock 3.glb", 40, "rock");
 spawnAntekAntek("./models/Coral 1.glb", 15, "coral");
 spawnAntekAntek("./models/Coral 2.glb", 10, "coralB");
-spawnAntekAntek("./models/Kelp.glb", 25, "kelp");
 spawnAntekAntek("./models/Starfish.glb", 30, "else");
 // END ANTEK ANTEK SEAFLOOR
 
@@ -317,7 +352,25 @@ function animate() {
 		if (keys.a) wish.sub(right);
 
 		if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(SPEED * dt);
-		camera.position.add(wish);
+		// ===============================================================
+		// camera.position.add(wish);
+		const ox = camera.position.x;
+		const oy = camera.position.y;
+		const oz = camera.position.z;
+
+		const nx = ox + wish.x;
+		const nz = oz + wish.z;
+
+		// kalau aman, jalan normal
+		if (!hitObstacle(nx, oy, nz)) {
+		camera.position.x = nx;
+		camera.position.z = nz;
+		} else {
+		// kalau nabrak, coba geser X aja / Z aja (biar nggak macet total)
+		if (!hitObstacle(nx, oy, oz)) camera.position.x = nx;
+		if (!hitObstacle(ox, oy, nz)) camera.position.z = nz;
+		}
+		// ===============================================================
 
 		if (keys.space) camera.position.y += VERT_SPEED * dt;
 		if (keys.shift) camera.position.y -= VERT_SPEED * dt;
