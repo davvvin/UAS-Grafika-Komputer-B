@@ -221,7 +221,7 @@ function hitObstacle(x, y, z) {
 
     // kalau terlalu beda tinggi, skip (biar bisa "terbang" lewat atas)
     // if (Math.abs(y - o.y) > Y_RANGE) continue;
-		const halfH = o.h / 2;
+		const halfH = (o.h / 2) + 0.5;
         if (y < o.y - halfH || y > o.y + halfH) continue;
 
 		const dx = x - o.x;
@@ -408,8 +408,21 @@ function animate() {
 		}
 		// ===============================================================
 
-		if (keys.space) camera.position.y += VERT_SPEED * dt;
-		if (keys.shift) camera.position.y -= VERT_SPEED * dt;
+		const nextY_up = camera.position.y + VERT_SPEED * dt;
+		const nextY_down = camera.position.y - VERT_SPEED * dt;
+
+		if (keys.space) {
+		// Cek apakah naik akan menabrak objek dari bawah (jarang, tapi untuk keamanan)
+			if (!hitObstacle(camera.position.x, nextY_up, camera.position.z)) {
+				camera.position.y = nextY_up;
+			}
+		}
+		if (keys.shift) {
+			// Cek apakah turun akan menabrak bagian atas objek
+			if (!hitObstacle(camera.position.x, nextY_down, camera.position.z)) {
+				camera.position.y = nextY_down;
+			}
+		}
 
 		camera.position.y = THREE.MathUtils.clamp(camera.position.y, MIN_Y, MAX_Y);
 
