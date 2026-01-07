@@ -21,6 +21,29 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 
+// particles
+const particleCount = 10000; 
+const pGeo = new THREE.BufferGeometry();
+const pPos = new Float32Array(particleCount * 3);
+
+for (let i = 0; i < particleCount * 3; i++) {
+    pPos[i] = (Math.random() - 0.5) * 400;
+}
+
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+
+const pMat = new THREE.PointsMaterial({ 
+    color: 0xffffff, 
+    size: 0.5, 
+    transparent: true, 
+    opacity: 0.4,
+    depthWrite: false 
+});
+// particle end
+
+const particles = new THREE.Points(pGeo, pMat);
+scene.add(particles);
+
 document.body.style.margin = "0";
 document.body.style.overflow = "hidden";
 document.body.appendChild(renderer.domElement);
@@ -185,7 +208,7 @@ const z_max = 200;
 
 // ===============================================================
 const obstacles = [];
-const PLAYER_R = 1;        // radius tabrakan kamera (ubah kalau terlalu “nabrak jauh”)
+const PLAYER_R = 1.5;        // radius tabrakan kamera (ubah kalau terlalu “nabrak jauh”)
 const Y_RANGE = 10;        // kalau kamera jauh lebih tinggi dari objek, dia boleh lewat
 
 function addObstacle(x, y, z, r) {
@@ -197,12 +220,17 @@ function hitObstacle(x, y, z) {
     const o = obstacles[i];
 
     // kalau terlalu beda tinggi, skip (biar bisa "terbang" lewat atas)
-    if (Math.abs(y - o.y) > Y_RANGE) continue;
+    // if (Math.abs(y - o.y) > Y_RANGE) continue;
+		const halfH = o.h / 2;
+        if (y < o.y - halfH || y > o.y + halfH) continue;
 
-    const dx = x - o.x;
-    const dz = z - o.z;
-    const rr = (PLAYER_R + o.r);
-    if (dx * dx + dz * dz < rr * rr) return true;
+		const dx = x - o.x;
+		const dz = z - o.z;
+		// const rr = (PLAYER_R + o.r);
+		const distSq = dx * dx + dz * dz;
+		const minCleanDist = (PLAYER_R + o.r);
+		// if (dx * dx + dz * dz < rr * rr) return true;
+		if (distSq < minCleanDist * minCleanDist) return true;
   }
   return false;
 }
@@ -217,47 +245,55 @@ function spawnAntekAntek(path, count, type) {
 			let y;
 
 			// scale 
-			if (type === "coral") {
-				s_min = 30;
-				s_max = 50;
-			} else if (type === "rock") {
-				s_min = 50;
-				s_max = 100;
-			} else if (type === "coralB") {
-				s_min = 10;
-				s_max = 25;
-			} else if (type === "kelp") {
-				s_min = 5;
-				s_max = 5;
-			} else {
-				s_min = 1;
-				s_max = 1;
-			}
+			if (type === "coral") { s_min = 30; s_max = 50; }
+            else if (type === "rock") { s_min = 50; s_max = 100; }
+            else if (type === "coralB") { s_min = 10; s_max = 25; }
+            else if (type === "kelp") { s_min = 5; s_max = 5; }
+            else { s_min = 1; s_max = 1; }
 
 			antek.position.set(randm(x_min, x_max), 0, randm(z_min, z_max));
 			const s = randm(s_min, s_max);
 			antek.scale.set(s, s, s);
+			antek.position.set(randm(x_min, x_max), 0, randm(z_min, z_max));
 			antek.rotation.y = randm(0, Math.PI * 2);
 
 			antek.updateMatrixWorld(true);
+			// const box = new THREE.Box3().setFromObject(antek);
+			// const floorY = seafloor.position.y;
+			// const eps = 0.02;
 			const box = new THREE.Box3().setFromObject(antek);
-			const floorY = seafloor.position.y;
-			const eps = 0.02;
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
 
 			// geser supaya titik paling bawah (box.min.y) tepat di atas lantai
-			antek.position.y += (floorY - box.min.y) + eps;
+			// antek.position.y += (floorY - box.min.y) + eps;
+			antek.position.y += (0 - box.min.y);
+			antek.updateMatrixWorld(true); // Update lagi setelah geser Y
 
 			scene.add(antek);
-			let r;
-      if (type === "rock") r = s * 0.25;
-      else if (type === "coral" || type === "coralB") r = s * 0.18;
-      else r = s * 0.10;
+			const radius = Math.max(size.x, size.z) * 0.4; 
+            const height = size.y;
 
-      addObstacle(antek.position.x, antek.position.y, antek.position.z, r);
-		}
-	});
+            // Hitung radius dan tinggi berdasarkan Box3 yang sudah final
+            obstacles.push({
+                x: center.x,
+                y: center.y,
+                z: center.z,
+                r: radius,
+                h: height // Simpan tinggi objek untuk pengecekan vertikal yang lebih akurat
+	// 		let r;
+    //   if (type === "rock") r = s * 0.25;
+    //   else if (type === "coral" || type === "coralB") r = s * 0.18;
+    //   else r = s * 0.10;
+
+    //   addObstacle(antek.position.x, antek.position.y, antek.position.z, r);
+	// 	}
+});
+        }
+    });
 }
-
 spawnAntekAntek("./models/Kelp.glb", 200, "kelp");
 spawnAntekAntek("./models/Rock 1.glb", 40, "rock");
 spawnAntekAntek("./models/Rock 2.glb", 40, "rock");
@@ -389,6 +425,9 @@ function animate() {
 
 		if (camera.position.y < MIN_Y) camera.position.y = MIN_Y;
 	}
+
+	// particle movement
+	particles.rotation.y += dt * 0.1;
 
 	renderer.render(scene, camera);
 }
