@@ -14,6 +14,76 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 camera.position.set(0, 20, 0);
 scene.add(camera);
 
+// onclick wiki popup
+const animalWiki = {
+    whale: {
+        title: "Paus Biru (Whale)",
+        desc: "Hewan terbesar di planet ini. Mereka berkomunikasi melalui nyanyian bawah air yang sangat keras dan bermigrasi ribuan mil setiap tahunnya.",
+        fact: "Jantung seekor paus biru seukuran mobil kecil!"
+    },
+	manta: {
+    title: "Manta Ray (Ikan Pari Manta)",
+    desc: "Ikan pari raksasa yang lembut. Mereka tidak memiliki sengat beracun dan memakan plankton sambil 'terbang' di dalam air.",
+    fact: "Manta Ray memiliki rasio otak-ke-tubuh terbesar di antara semua ikan di dunia!"
+}
+	
+};
+
+const wikiPopup = document.createElement("div");
+wikiPopup.style.cssText = `
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    width: 300px; padding: 20px; background: rgba(0, 20, 40, 0.85);
+    color: #eaf7ff; border: 1px solid #00aaff; border-radius: 12px;
+    font-family: system-ui, Arial; backdrop-filter: blur(10px);
+    display: none; z-index: 100; pointer-events: none;
+`;
+document.body.appendChild(wikiPopup);
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+window.addEventListener("click", () => {
+    if (!controls.isLocked) return;
+
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+
+    // Cek Klik Whale
+    if (whaleRig) {
+        const intersectsWhale = raycaster.intersectObject(whaleRig, true);
+        if (intersectsWhale.length > 0) {
+            showWiki("whale");
+            return; // Berhenti jika sudah kena whale
+        }
+    }
+
+    // Cek Klik Manta
+    if (mantaRig) {
+        const intersectsManta = raycaster.intersectObject(mantaRig, true);
+        if (intersectsManta.length > 0) {
+            showWiki("manta");
+            return; // Berhenti jika sudah kena manta
+        }
+    }
+
+    // Jika klik meleset (tidak kena hewan apapun)
+    wikiPopup.style.display = "none"; 
+});
+
+function showWiki(id) {
+    const data = animalWiki[id];
+    wikiPopup.innerHTML = `
+        <h3 style="margin:0 0 8px; color:#00d2ff">${data.title}</h3>
+        <p style="font-size:14px; line-height:1.5; margin-bottom:10px">${data.desc}</p>
+        <div style="font-size:12px; opacity:0.8; font-style:italic">Fakta: ${data.fact}</div>
+    `;
+    wikiPopup.style.display = "block";
+
+    // Sembunyikan otomatis setelah 5 detik
+    setTimeout(() => { wikiPopup.style.display = "none"; }, 5000);
+}
+// onclick wiki popup end
+
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -80,6 +150,43 @@ btn.style.cssText = `
 `;
 document.body.appendChild(btn);
 
+// crosshair
+const crosshair = document.createElement("div");
+crosshair.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    transform: translate(-50%, -50%);
+    
+    background-image: url('./textures/crosshair.png'); 
+    background-size: contain;
+    background-repeat: no-repeat;
+    
+    background-color: rgba(255, 255, 255, 0.5); 
+    border-radius: 50%;
+    border: 2px solid rgba(0, 170, 255, 0.8);
+
+    pointer-events: none; 
+    display: none;        
+    z-index: 100;
+`;
+document.body.appendChild(crosshair);
+
+controls.addEventListener("lock", () => {
+    overlay.style.display = "none";
+    crosshair.style.display = "block"; // Munculkan crosshair
+});
+
+controls.addEventListener("unlock", () => {
+    overlay.style.display = "flex";
+    crosshair.style.display = "none";  // Sembunyikan crosshair
+    wikiPopup.style.display = "none";  // Sembunyikan popup wiki jika ada
+});
+// crosshair end
+
+
 const ambient = new THREE.AmbientLight(0xffffff, 0.25);
 scene.add(ambient);
 
@@ -138,6 +245,7 @@ const seafloor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000, 1, 1), seafl
 seafloor.rotation.x = -Math.PI / 2;
 seafloor.position.y = 0;
 scene.add(seafloor);
+const MAX_Y_SURFACE = 100.0; // Tinggi permukaan air
 
 // TEXTURE
 const texLoader = new THREE.TextureLoader();
@@ -146,6 +254,7 @@ seafloorTex.colorSpace = THREE.SRGBColorSpace;
 seafloorMat.map = seafloorTex;
 
 const gltfLoader = new GLTFLoader();
+//whale
 let whaleRig = null;
 let whaleMixer = null;
 let whaleBottomOffset = 0;
@@ -161,7 +270,7 @@ const whaleState = {
   margin: 0.8,
 };
 
-// MODEL UTAMA
+// MODEL WHALE
 gltfLoader.load(
 	"./models/Whale.glb",
 	(gltf) => {
@@ -193,7 +302,116 @@ gltfLoader.load(
 	undefined,
 	(err) => console.error("Gagal load Whale.glb:", err)
 );
-// END MODEL UTAMA
+// END MODEL WHALE
+
+let mantaRig = null;
+let mantaMixer = null;
+
+const mantaState = {
+	pos: new THREE.Vector3(-50, 25, -50), // Mulai dari pojok yang berbeda
+    vel: new THREE.Vector3(0.8, 0.5, 1),   // Arah gerak awal
+    speed: 12.0,                           // Manta biasanya sedikit lebih gesit
+    yMin: 15,
+    yMax: 45
+};
+
+// MODEL MANTARAY	
+gltfLoader.load(
+    "./models/Manta_ray.glb",
+    (gltf) => {
+        mantaRig = new THREE.Group();
+        scene.add(mantaRig);
+
+        const mantaModel = gltf.scene;
+        mantaModel.scale.set(2.5, 2.5, 2.5); // Sesuaikan skala
+        mantaRig.add(mantaModel);
+
+        if (gltf.animations && gltf.animations.length > 0) {
+            mantaMixer = new THREE.AnimationMixer(mantaModel);
+            // Sesuaikan nama animasi jika berbeda (biasanya "Swim" atau animasi index 0)
+            const action = mantaMixer.clipAction(gltf.animations[0]);
+            action.play();
+        }
+        
+        mantaRig.position.copy(mantaState.pos);
+    },
+    undefined,
+    (err) => console.error("Gagal load Manta Ray:", err)
+);
+// END MODEL MANTARAY
+
+// --- WATER SURFACE (THE DIVIDER) ---
+// Kita clone texture lantai untuk air, tapi diberi warna biru
+const waterTex = seafloorTex.clone();
+waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
+waterTex.repeat.set(5, 5); // Ulangi tekstur agar detail riaknya terlihat kecil
+
+const waterMat = new THREE.MeshStandardMaterial({
+    color: 0x0088ff,
+    map: waterTex,
+    transparent: true,
+    opacity: 0.8,           // Transparan agar bisa melihat 'langit' samar-samar
+    side: THREE.DoubleSide, // PENTING: Agar terlihat saat mendongak dari bawah
+    roughness: 0.1,
+    metalness: 0.1
+});
+
+const waterSurface = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), waterMat);
+waterSurface.rotation.x = Math.PI / 2; // Menghadap ke bawah/atas
+waterSurface.position.y = MAX_Y_SURFACE;
+scene.add(waterSurface);
+
+// --- MULTIPLE GODRAYS SETUP ---
+const godRays = [];
+const rayTex = texLoader.load('./textures/godray_alpha.png'); 
+rayTex.wrapS = rayTex.wrapT = THREE.RepeatWrapping;
+
+// Geometri dasar untuk semua rays
+const rayGeo = new THREE.CylinderGeometry(5, 60, 400, 32, 1, true);
+
+// Material dasar
+const baseRayMat = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.15,
+    alphaMap: rayTex,
+    blending: THREE.AdditiveBlending,
+    // side: THREE.DoubleSide,
+    depthWrite: false
+});
+
+// Spawn multiple rays
+const rayCount = 15; // Jumlah berkas cahaya
+for (let i = 0; i < rayCount; i++) {
+    // Clone material agar bisa punya opacity/animasi beda-beda
+    const mat = baseRayMat.clone();
+    
+    // Variasi ukuran sedikit
+    const scaleY = 0.8 + Math.random() * 0.5;
+    
+    const mesh = new THREE.Mesh(rayGeo, mat);
+    
+    // Posisi acak di sekitar player
+    const x = (Math.random() - 0.5) * 350; 
+    const z = (Math.random() - 0.5) * 350;
+    
+    mesh.position.set(x, 100, z);
+    mesh.scale.set(1, scaleY, 1);
+    
+    // Sedikit miring acak agar tidak terlalu seragam
+    mesh.rotation.x = (Math.random() - 0.5) * 0.2;
+    mesh.rotation.z = (Math.random() - 0.5) * 0.2;
+    
+    scene.add(mesh);
+    
+    // Simpan ke array untuk dianimasikan
+    godRays.push({
+        mesh: mesh,
+        speed: 0.5 + Math.random() * 1.5, // Kecepatan rotasi/flicker
+        baseOpacity: 0.1 + Math.random() * 0.1 // Opacity dasar
+    });
+}
+// --- END GODRAYS ---
 
 // ANTEK ANTEK SEAFLOOR
 function randm(min, max) {
@@ -221,7 +439,7 @@ function hitObstacle(x, y, z) {
 
     // kalau terlalu beda tinggi, skip (biar bisa "terbang" lewat atas)
     // if (Math.abs(y - o.y) > Y_RANGE) continue;
-		const halfH = (o.h / 2) + 0.5;
+		const halfH = (o.h / 2) + 2;
         if (y < o.y - halfH || y > o.y + halfH) continue;
 
 		const dx = x - o.x;
@@ -254,6 +472,7 @@ function spawnAntekAntek(path, count, type) {
 			antek.position.set(randm(x_min, x_max), 0, randm(z_min, z_max));
 			const s = randm(s_min, s_max);
 			antek.scale.set(s, s, s);
+			
 			antek.position.set(randm(x_min, x_max), 0, randm(z_min, z_max));
 			antek.rotation.y = randm(0, Math.PI * 2);
 
@@ -262,14 +481,15 @@ function spawnAntekAntek(path, count, type) {
 			// const floorY = seafloor.position.y;
 			// const eps = 0.02;
 			const box = new THREE.Box3().setFromObject(antek);
-            const size = new THREE.Vector3();
-            box.getSize(size);
+				const size = new THREE.Vector3();
+				box.getSize(size);
             const center = new THREE.Vector3();
             box.getCenter(center);
 
 			// geser supaya titik paling bawah (box.min.y) tepat di atas lantai
 			// antek.position.y += (floorY - box.min.y) + eps;
-			antek.position.y += (0 - box.min.y);
+			// antek.position.y += (0 - box.min.y);
+			antek.position.y -= (box.min.y - 0.5);	
 			antek.updateMatrixWorld(true); // Update lagi setelah geser Y
 
 			scene.add(antek);
@@ -325,7 +545,7 @@ const wish = new THREE.Vector3();
 const SPEED = 12.0;
 const VERT_SPEED = 9.0;
 const MIN_Y = 0 + 1.6;
-const MAX_Y = 70.0;
+const MAX_Y = 100.0;
 
 window.addEventListener("resize", () => {
 	camera.aspect = window.innerWidth / window.innerHeight;
@@ -373,6 +593,52 @@ function animate() {
 			whaleState.pos.z + whaleState.vel.z
 		);
 	}
+
+	// manta ray animation
+	if (mantaMixer) mantaMixer.update(dt);
+
+    if (mantaRig) {
+        // Gerak Manta
+        mantaState.pos.x += mantaState.speed * mantaState.vel.x * dt;
+        mantaState.pos.z += mantaState.speed * mantaState.vel.z * dt;
+        mantaState.pos.y += mantaState.vel.y * dt;
+
+        // Boundary Check (Pantulan jika kena batas WORLD_RADIUS)
+        if (Math.abs(mantaState.pos.x) > WORLD_RADIUS) mantaState.vel.x *= -1;
+        if (Math.abs(mantaState.pos.z) > WORLD_RADIUS) mantaState.vel.z *= -1;
+        if (mantaState.pos.y > mantaState.yMax || mantaState.pos.y < mantaState.yMin) mantaState.vel.y *= -1;
+
+        mantaRig.position.copy(mantaState.pos);
+        
+        // Agar Manta menghadap ke arah dia berenang
+        mantaRig.lookAt(
+            mantaState.pos.x + mantaState.vel.x,
+            mantaState.pos.y + mantaState.vel.y,
+            mantaState.pos.z + mantaState.vel.z
+        );
+    }
+
+	const time = now * 0.001;
+
+	    // Animate Water Surface
+    if (waterTex) {
+        waterTex.offset.x += dt * 0.05; 
+        waterTex.offset.y += dt * 0.02;
+    }
+
+    // Animate Godrays
+    godRays.forEach((ray, i) => {
+        // 1. Putar tekstur (Y axis) agar gradasi terlihat bergerak
+        ray.mesh.rotation.y += 0.05 * dt * ray.speed;
+        
+        // 2. Goyang (Sway) pada sumbu Z dan X dari rotasi awal
+        // Menggunakan rotasi awal (userData) agar tidak bergeser terus menerus
+        ray.mesh.rotation.z = ray.mesh.userData.initialRotZ + Math.sin(time * 0.5 * ray.speed + i) * 0.05;
+        ray.mesh.rotation.x = ray.mesh.userData.initialRotX + Math.cos(time * 0.3 * ray.speed + i) * 0.05;
+        
+        // 3. Denyut Opacity
+        ray.mesh.material.opacity = ray.baseOpacity + Math.sin(time * 1.5 * ray.speed) * 0.03;
+    });
 
 	// player movement
 	if (controls.isLocked) {
