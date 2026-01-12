@@ -241,7 +241,38 @@ const seafloorMat = new THREE.MeshStandardMaterial({
 	metalness: 0.0,
 });
 
-const seafloor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000, 1, 1), seafloorMat);
+// const seafloor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000, 1, 1), seafloorMat);
+const seafloorGeo = new THREE.PlaneGeometry(1000, 1000, 128, 128);
+
+const positions = seafloorGeo.attributes.position;
+for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const y = positions.getY(i); // Ini sebenarnya posisi mendatar di plane sebelum rotasi
+
+    // Rumus gelombang sederhana (kombinasi Sinus)
+    // Frekuensi rendah (bukit besar) + Frekuensi tinggi (detail kecil)
+    const z = Math.sin(x * 0.01) * 10 + Math.cos(y * 0.01) * 10 
+            + Math.sin(x * 0.05 + y * 0.05) * 2;
+
+    positions.setZ(i, z);
+}
+// Hitung ulang pencahayaan (normals) agar bayangan di bukit terlihat nyata
+seafloorGeo.computeVertexNormals();
+
+const seafloor = new THREE.Mesh(seafloorGeo, seafloorMat);
+
+// Fungsi utilitas untuk mendapatkan ketinggian tanah di posisi (x, z) tertentu
+// Ini mereplikasi rumus matematika yang sama dengan yang kita pakai di loop vertices tadi
+function getSeafloorHeight(x, z) {
+    // Perhatikan: di dunia 3D (x, z), tapi rumus geometri pakai (x, y) lokal plane
+    // Karena plane di-rotasi -Math.PI/2, sumbu Y lokal plane menjadi sumbu Z dunia negatif.
+    // Namun untuk simplifikasi karena plane kita di pusat (0,0), kita bisa pakai input (x, z) langsung ke rumus.
+    
+    // PENTING: Gunakan RUMUS YANG SAMA PERSIS dengan saat pembuatan terrain
+    return Math.sin(x * 0.01) * 10 + Math.cos(z * 0.01) * 10 
+         + Math.sin(x * 0.05 + z * 0.05) * 2;
+}
+
 seafloor.rotation.x = -Math.PI / 2;
 seafloor.position.y = 0;
 scene.add(seafloor);
@@ -253,7 +284,7 @@ const seafloorTex = texLoader.load("./models/tex.jpg");
 seafloorTex.colorSpace = THREE.SRGBColorSpace;
 seafloorMat.map = seafloorTex;
 
-const gltfLoader = new GLTFLoader();
+const gltfLoader = new GLTFLoader();    
 //whale
 let whaleRig = null;
 let whaleMixer = null;
@@ -370,10 +401,10 @@ rayTex.wrapS = rayTex.wrapT = THREE.RepeatWrapping;
 const rayGeo = new THREE.CylinderGeometry(5, 60, 400, 32, 1, true);
 
 // Material dasar
-const baseRayMat = new THREE.MeshPhongMaterial({
+const baseRayMat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
-    opacity: 0.15,
+    opacity: 0.05,
     alphaMap: rayTex,
     blending: THREE.AdditiveBlending,
     // side: THREE.DoubleSide,
@@ -381,7 +412,7 @@ const baseRayMat = new THREE.MeshPhongMaterial({
 });
 
 // Spawn multiple rays
-const rayCount = 15; // Jumlah berkas cahaya
+const rayCount = 30; // Jumlah berkas cahaya
 for (let i = 0; i < rayCount; i++) {
     // Clone material agar bisa punya opacity/animasi beda-beda
     const mat = baseRayMat.clone();
@@ -473,44 +504,35 @@ function spawnAntekAntek(path, count, type) {
 			const s = randm(s_min, s_max);
 			antek.scale.set(s, s, s);
 			
-			antek.position.set(randm(x_min, x_max), 0, randm(z_min, z_max));
-			antek.rotation.y = randm(0, Math.PI * 2);
+// Set posisi X Z
+            const randX = randm(x_min, x_max);
+            const randZ = randm(z_min, z_max);
+            antek.position.set(randX, 0, randZ);
+            
+            antek.rotation.y = randm(0, Math.PI * 2);
+            antek.updateMatrixWorld(true);
+            
+            const box = new THREE.Box3().setFromObject(antek);
+            const size = new THREE.Vector3(); box.getSize(size);
+            const center = new THREE.Vector3(); box.getCenter(center);
+            
+            // HITUNG KETINGGIAN TANAH DI TITIK INI
+            const groundY = getSeafloorHeight(randX, randZ);
+            
+            // Letakkan objek di atas tanah (groundY) dikurangi offset titik terendah objek (box.min.y)
+            // agar objek menapak pas di permukaan gelombang
+            antek.position.y = groundY - box.min.y;  
+            if (type === "rock") antek.position.y -= 1.0; // Sedikit tenggelamkan batu agar natural
 
-			antek.updateMatrixWorld(true);
-			// const box = new THREE.Box3().setFromObject(antek);
-			// const floorY = seafloor.position.y;
-			// const eps = 0.02;
-			const box = new THREE.Box3().setFromObject(antek);
-				const size = new THREE.Vector3();
-				box.getSize(size);
-            const center = new THREE.Vector3();
-            box.getCenter(center);
-
-			// geser supaya titik paling bawah (box.min.y) tepat di atas lantai
-			// antek.position.y += (floorY - box.min.y) + eps;
-			// antek.position.y += (0 - box.min.y);
-			antek.position.y -= (box.min.y - 0.5);	
-			antek.updateMatrixWorld(true); // Update lagi setelah geser Y
-
-			scene.add(antek);
-			const radius = Math.max(size.x, size.z) * 0.4; 
-            const height = size.y;
-
-            // Hitung radius dan tinggi berdasarkan Box3 yang sudah final
-            obstacles.push({
-                x: center.x,
-                y: center.y,
-                z: center.z,
-                r: radius,
-                h: height // Simpan tinggi objek untuk pengecekan vertikal yang lebih akurat
-	// 		let r;
-    //   if (type === "rock") r = s * 0.25;
-    //   else if (type === "coral" || type === "coralB") r = s * 0.18;
-    //   else r = s * 0.10;
-
-    //   addObstacle(antek.position.x, antek.position.y, antek.position.z, r);
-	// 	}
-});
+            antek.updateMatrixWorld(true);
+            scene.add(antek);
+            
+            // Update obstacle dengan posisi Y baru yang mengikuti terrain
+            // Kita perlu hitung center lagi karena Y sudah berubah
+            const finalBox = new THREE.Box3().setFromObject(antek);
+            finalBox.getCenter(center);
+            
+            obstacles.push({ x: center.x, y: center.y, z: center.z, r: Math.max(size.x, size.z) * 0.4, h: size.y });
         }
     });
 }
@@ -625,20 +647,6 @@ function animate() {
         waterTex.offset.x += dt * 0.05; 
         waterTex.offset.y += dt * 0.02;
     }
-
-    // Animate Godrays
-    godRays.forEach((ray, i) => {
-        // 1. Putar tekstur (Y axis) agar gradasi terlihat bergerak
-        ray.mesh.rotation.y += 0.05 * dt * ray.speed;
-        
-        // 2. Goyang (Sway) pada sumbu Z dan X dari rotasi awal
-        // Menggunakan rotasi awal (userData) agar tidak bergeser terus menerus
-        ray.mesh.rotation.z = ray.mesh.userData.initialRotZ + Math.sin(time * 0.5 * ray.speed + i) * 0.05;
-        ray.mesh.rotation.x = ray.mesh.userData.initialRotX + Math.cos(time * 0.3 * ray.speed + i) * 0.05;
-        
-        // 3. Denyut Opacity
-        ray.mesh.material.opacity = ray.baseOpacity + Math.sin(time * 1.5 * ray.speed) * 0.03;
-    });
 
 	// player movement
 	if (controls.isLocked) {
