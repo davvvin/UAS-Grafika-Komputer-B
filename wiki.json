@@ -1,0 +1,17 @@
+{
+  "whale": {
+    "title": "Paus Biru (Whale)",
+    "desc": "Hewan terbesar di planet ini. Mereka berkomunikasi melalui nyanyian bawah air yang sangat keras dan bermigrasi ribuan mil setiap tahunnya.",
+    "fact": "Jantung seekor paus biru seukuran mobil kecil!"
+  },
+  "manta": {
+    "title": "Manta Ray (Ikan Pari Manta)",
+    "desc": "Ikan pari raksasa yang lembut. Mereka tidak memiliki sengat beracun dan memakan plankton sambil 'terbang' di dalam air.",
+    "fact": "Manta Ray memiliki rasio otak-ke-tubuh terbesar di antara semua ikan di dunia!"
+  },
+  "nemo": {
+    "title":"Nemo (Ikan Badut)",
+    "desc":"Ikan badut yang terkenal karena kecerdasannya dan warna yang mencolok. Mereka hidup di terumbu karang dan memiliki hubungan simbiosis dengan anemon laut.",
+    "fact":"Ikan badut tidak bisa hidup di air tawar!"
+  }
+}
