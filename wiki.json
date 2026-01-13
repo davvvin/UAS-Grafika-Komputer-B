@@ -13,5 +13,15 @@
     "title":"Nemo (Ikan Badut)",
     "desc":"Ikan badut yang terkenal karena kecerdasannya dan warna yang mencolok. Mereka hidup di terumbu karang dan memiliki hubungan simbiosis dengan anemon laut.",
     "fact":"Ikan badut tidak bisa hidup di air tawar!"
+  },
+  "parrot": {
+    "title": "Parrot Fish (Ikan Kakatua)",
+    "desc": "Ikan karang berwarna cerah dengan mulut mirip paruh. Mereka mengikis alga dari permukaan karang dan membantu menjaga terumbu tetap sehat.",
+    "fact": "Sebagian pasir putih di pantai berasal dari karang yang dihancurkan dan dikeluarkan kembali oleh parrot fish."
+  },
+  "butterfly": {
+    "title": "Butterfly Fish (Ikan Kupu-Kupu)",
+    "desc": "Ikan karang bermotif mencolok dengan tubuh pipih. Mereka sering terlihat berpasangan dan hidup di sekitar terumbu untuk mencari makanan kecil.",
+    "fact": "Banyak butterfly fish punya 'mata palsu' di dekat ekor untuk mengecoh predator."
   }
 }

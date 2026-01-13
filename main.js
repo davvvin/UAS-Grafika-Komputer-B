@@ -155,6 +155,15 @@ window.addEventListener("click", () => {
         const intersectsNemo = raycaster.intersectObject(nemoRig, true);
         if (intersectsNemo.length > 0) { showWiki("nemo"); return; }
     }
+    if (parrotRig) {
+        const intersectsParrot = raycaster.intersectObject(parrotRig, true);
+        if (intersectsParrot.length > 0) { showWiki("parrot"); return; }
+    }   
+    if (butterflyRig) {
+        const intersectsButterfly = raycaster.intersectObject(butterflyRig, true);
+        if (intersectsButterfly.length > 0) { showWiki("butterfly"); return; }
+    }
+    
     wikiPopup.style.display = "none";
 });
 
