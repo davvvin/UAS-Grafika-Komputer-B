@@ -11,6 +11,12 @@ import {
     mantaRig,
     mantaMixer,
     mantaState,
+    parrotRig,
+    parrotMixer,
+    parrotState,
+    butterflyRig,
+    butterflyMixer,
+    butterflyState,
     hitObstacle,
     nemoRig,
     nemoState,
@@ -27,6 +33,32 @@ scene.fog = new THREE.FogExp2(colors.dayBg, 0.015); // Sedikit dikurangi agar bi
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 900);
 camera.position.set(0, 20, 0);
 scene.add(camera);
+
+// BG MUSIC
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+const bgSound = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load('./music/under_the_sea.mp3', function(buffer) {
+    bgSound.setBuffer(buffer);
+    bgSound.setLoop(true);
+    bgSound.setVolume(0.25);
+    try { 
+        bgSound.play(); 
+    } catch (e) { 
+        console.warn('Autoplay blocked, will start after interaction.'); }
+}, undefined, function(err) { console.error('Audio load error:', err); });
+
+// button music
+const musicBtn = document.createElement("button");
+musicBtn.textContent = "Play Music";
+musicBtn.style.cssText = `position:fixed; top:16px; left:16px; z-index:12; padding:8px 10px; border-radius:8px; background:rgba(0,0,0,.35); color:#eaf7ff; border:1px solid rgba(255,255,255,.08); cursor:pointer;`;
+musicBtn.addEventListener('click', () => {
+    if (bgSound.isPlaying) { bgSound.pause(); musicBtn.textContent = 'Play Music'; }
+    else { bgSound.play(); musicBtn.textContent = 'Mute Music'; }
+});
+document.body.appendChild(musicBtn);
 
 // UI ELEMENTS 
 const wikiPopup = document.createElement("div");
@@ -91,8 +123,19 @@ document.body.appendChild(renderer.domElement);
 
 const controls = new PointerLockControls(camera, renderer.domElement);
 overlay.addEventListener("click", () => controls.lock());
-controls.addEventListener("lock", () => { overlay.style.display = "none"; crosshair.style.display = "block"; });
-controls.addEventListener("unlock", () => { overlay.style.display = "flex"; crosshair.style.display = "none"; wikiPopup.style.display = "none"; });
+
+controls.addEventListener("lock", () => {
+    overlay.style.display = "none";
+    crosshair.style.display = "block";
+    if (typeof bgSound !== 'undefined' && !bgSound.isPlaying) {
+        try { bgSound.play(); musicBtn.textContent = 'Mute Music'; } catch (e) { /* play may be blocked by browser */ }
+    }
+});
+controls.addEventListener("unlock", () => {
+    overlay.style.display = "flex";
+    crosshair.style.display = "none";
+    wikiPopup.style.display = "none";
+});
 
 // INTERACTION LOGIC 
 const raycaster = new THREE.Raycaster();
@@ -227,11 +270,11 @@ const rayGeo = new THREE.CylinderGeometry(5, 60, 800, 32, 1, true);
 
 //  Kembali ke MeshBasicMaterial agar godrays selalu "menyala" (tidak terpengaruh lighting)
 const baseRayMat = new THREE.MeshBasicMaterial({
-    color: 0x0000ff,
+    color: 0x98AFC7,
     transparent: true,
     opacity: 0.05,
-    // alphaMap: rayTex, 
-    blending: THREE.AdditiveBlending,
+    alphaMap: rayTex, 
+    // blending: THREE.AdditiveBlending,
     // side: THREE.DoubleSide, // Agar terlihat dari semua sisi (dalam/luar)
     depthWrite: false
 });
@@ -364,6 +407,30 @@ function animate() {
         if (nemoState.pos.y > nemoState.yMax || nemoState.pos.y < nemoState.yMin) nemoState.vel.y *= -1;
         nemoRig.position.copy(nemoState.pos);
         nemoRig.lookAt(nemoState.pos.clone().add(nemoState.vel));
+    }
+
+    // Parrot Fish movement
+    if (parrotMixer) parrotMixer.update(dt);
+    if (parrotRig) {
+        parrotState.pos.addScaledVector(parrotState.vel.clone().setY(0), parrotState.speed * dt);
+        parrotState.pos.y += parrotState.vel.y * dt;
+        if (Math.abs(parrotState.pos.x) > WORLD_RADIUS) parrotState.vel.x *= -1;
+        if (Math.abs(parrotState.pos.z) > WORLD_RADIUS) parrotState.vel.z *= -1;
+        if (parrotState.pos.y > parrotState.yMax || parrotState.pos.y < parrotState.yMin) parrotState.vel.y *= -1;
+        parrotRig.position.copy(parrotState.pos);
+        parrotRig.lookAt(parrotState.pos.clone().add(parrotState.vel));
+    }
+
+    // Butterfly Fish movement
+    if (butterflyMixer) butterflyMixer.update(dt);
+    if (butterflyRig) {
+        butterflyState.pos.addScaledVector(butterflyState.vel.clone().setY(0), butterflyState.speed * dt);
+        butterflyState.pos.y += butterflyState.vel.y * dt;
+        if (Math.abs(butterflyState.pos.x) > WORLD_RADIUS) butterflyState.vel.x *= -1;
+        if (Math.abs(butterflyState.pos.z) > WORLD_RADIUS) butterflyState.vel.z *= -1;
+        if (butterflyState.pos.y > butterflyState.yMax || butterflyState.pos.y < butterflyState.yMin) butterflyState.vel.y *= -1;
+        butterflyRig.position.copy(butterflyState.pos);
+        butterflyRig.lookAt(butterflyState.pos.clone().add(butterflyState.vel));
     }
 
     if (controls.isLocked) {

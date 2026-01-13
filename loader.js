@@ -16,6 +16,14 @@ export const mantaState = { pos: new THREE.Vector3(-50, 25, -50), vel: new THREE
 export let nemoRig = null, nemoMixer = null;
 export const nemoState = { pos: new THREE.Vector3(0, 50, 0), vel: new THREE.Vector3(1.2, 0.3, 0.7), speed: 10.0, yMin: 10, yMax: 35 };
 
+// Parrot Fish
+export let parrotRig = null, parrotMixer = null;
+export const parrotState = { pos: new THREE.Vector3(30, 22, 10), vel: new THREE.Vector3(0.9, 0.2, 0.6), speed: 8.0, yMin: 8, yMax: 28 };
+
+// Butterfly Fish
+export let butterflyRig = null, butterflyMixer = null;
+export const butterflyState = { pos: new THREE.Vector3(-30, 18, 40), vel: new THREE.Vector3(0.7, 0.15, 0.5), speed: 7.0, yMin: 6, yMax: 26 };
+
 // Obstacles
 export const obstacles = [];
 const PLAYER_R = 1.5;
@@ -151,6 +159,22 @@ export function initLoader(scene, getSeafloorHeight) {
     if (gltf.animations.length) { nemoMixer = new THREE.AnimationMixer(nemoModel); nemoMixer.clipAction(gltf.animations[0]).play(); }
     nemoRig.position.copy(nemoState.pos);
   }, undefined, (err) => console.error("Gagal load Nemo:", err));
+
+  // Parrot Fish
+  gltfLoader.load("./models/Parrot Fish.glb", (gltf) => {
+    parrotRig = new THREE.Group(); _scene.add(parrotRig);
+    const parrotModel = gltf.scene; parrotModel.scale.set(1.2, 1.2, 1.2); parrotRig.add(parrotModel);
+    if (gltf.animations.length) { parrotMixer = new THREE.AnimationMixer(parrotModel); parrotMixer.clipAction(gltf.animations[5]).play(); }
+    parrotRig.position.copy(parrotState.pos);
+  }, undefined, (err) => console.error("Gagal load Parrot Fish:", err));
+
+  // Butterfly Fish
+  gltfLoader.load("./models/Butterfly Fish.glb", (gltf) => {
+    butterflyRig = new THREE.Group(); _scene.add(butterflyRig);
+    const butterflyModel = gltf.scene; butterflyModel.scale.set(1.0, 1.0, 1.0); butterflyRig.add(butterflyModel);
+    if (gltf.animations.length) { butterflyMixer = new THREE.AnimationMixer(butterflyModel); butterflyMixer.clipAction(gltf.animations[5]).play(); }
+    butterflyRig.position.copy(butterflyState.pos);
+  }, undefined, (err) => console.error("Gagal load Butterfly Fish:", err));
 
 
   spawnAntekAntek("./models/Kelp.glb", 200, "kelp");
