@@ -227,11 +227,11 @@ const rayGeo = new THREE.CylinderGeometry(5, 60, 800, 32, 1, true);
 
 //  Kembali ke MeshBasicMaterial agar godrays selalu "menyala" (tidak terpengaruh lighting)
 const baseRayMat = new THREE.MeshBasicMaterial({
-    color: 0x0000ff,
+    color: 0x88ccff,
     transparent: true,
     opacity: 0.05,
-    // alphaMap: rayTex, 
-    blending: THREE.AdditiveBlending,
+    alphaMap: rayTex, 
+    // blending: THREE.AdditiveBlending,
     // side: THREE.DoubleSide, // Agar terlihat dari semua sisi (dalam/luar)
     depthWrite: false
 });
