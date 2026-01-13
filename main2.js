@@ -14,6 +14,32 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 camera.position.set(0, 20, 0);
 scene.add(camera);
 
+// --- (background music) ---
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+const bgSound = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load('./music/under_the_sea.mp3', function(buffer) {
+    bgSound.setBuffer(buffer);
+    bgSound.setLoop(true);
+    bgSound.setVolume(0.25);
+    try { 
+        bgSound.play(); 
+    } catch (e) { 
+        console.warn('Autoplay blocked, will start after interaction.'); }
+}, undefined, function(err) { console.error('Audio load error:', err); });
+
+// button music
+const musicBtn = document.createElement("button");
+musicBtn.textContent = "Play Music";
+musicBtn.style.cssText = `position:fixed; top:16px; left:16px; z-index:12; padding:8px 10px; border-radius:8px; background:rgba(0,0,0,.35); color:#eaf7ff; border:1px solid rgba(255,255,255,.08); cursor:pointer;`;
+musicBtn.addEventListener('click', () => {
+    if (bgSound.isPlaying) { bgSound.pause(); musicBtn.textContent = 'Play Music'; }
+    else { bgSound.play(); musicBtn.textContent = 'Mute Music'; }
+});
+document.body.appendChild(musicBtn);
+
 // --- WIKI DATA ---
 const animalWiki = {
     whale: {
@@ -91,8 +117,19 @@ document.body.appendChild(renderer.domElement);
 
 const controls = new PointerLockControls(camera, renderer.domElement);
 overlay.addEventListener("click", () => controls.lock());
-controls.addEventListener("lock", () => { overlay.style.display = "none"; crosshair.style.display = "block"; });
-controls.addEventListener("unlock", () => { overlay.style.display = "flex"; crosshair.style.display = "none"; wikiPopup.style.display = "none"; });
+controls.addEventListener("lock", () => {
+    overlay.style.display = "none";
+    crosshair.style.display = "block";
+    // Attempt to start background music after a user interaction (pointer lock)
+    if (typeof bgSound !== 'undefined' && !bgSound.isPlaying) {
+        try { bgSound.play(); musicBtn.textContent = 'Mute Music'; } catch (e) { /* play may be blocked by browser */ }
+    }
+});
+controls.addEventListener("unlock", () => {
+    overlay.style.display = "flex";
+    crosshair.style.display = "none";
+    wikiPopup.style.display = "none";
+});
 
 // --- INTERACTION LOGIC ---
 const raycaster = new THREE.Raycaster();
