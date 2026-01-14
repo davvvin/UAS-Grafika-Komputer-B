@@ -6,7 +6,7 @@ const gltfLoader = new GLTFLoader();
 
 // Whale
 export let whaleRig = null, whaleMixer = null, whaleBottomOffset = 0;
-export const whaleState = { pos: new THREE.Vector3(0, 40, 0), vel: new THREE.Vector3(1, 0, 0), speed: 9.0, yMin: 10, yMax: 30, margin: 0.8 };
+export const whaleState = { pos: new THREE.Vector3(-20, 60, 0), vel: new THREE.Vector3(1, 0, 0), speed: 9.0, yMin: 10, yMax: 30, margin: 0.8 };
 
 // Manta
 export let mantaRig = null, mantaMixer = null;
@@ -44,7 +44,7 @@ export function hitObstacle(x, y, z) {
 
   //  Cek tabrakan dengan TERRAIN (agar tidak tembus lantai bergelombang)
   const terrainHeight = _getSeafloorHeight(x, z);
-  if (y < terrainHeight + 1) return true; // +2 buffer aman
+  if (y < terrainHeight + 1) return true;
 
   return false;
 }
@@ -87,15 +87,13 @@ function spawnAntekAntek(path, count, type) {
         const randX = randm(x_min, x_max);
         const randZ = randm(z_min, z_max);
 
-        // jauh dari player spawn 
-        if ((randX * randX + randZ * randZ) <= (50 * 50)) continue;
+        if ((randX * randX + randZ * randZ) <= (30 * 30)) continue;
 
         // set posisi & rotasi 
         antek.position.set(randX, 0, randZ);
         antek.rotation.y = randm(0, Math.PI * 2);
         antek.updateMatrixWorld(true);
 
-        // grounding terrain 
         const box0 = new THREE.Box3().setFromObject(antek);
         const groundY = _getSeafloorHeight(randX, randZ);
         antek.position.y = groundY - box0.min.y;
@@ -103,7 +101,6 @@ function spawnAntekAntek(path, count, type) {
         if (type === "kelp") antek.position.y -= 5;
         antek.updateMatrixWorld(true);
 
-        // hitung collider 
         const box = new THREE.Box3().setFromObject(antek);
         const size = new THREE.Vector3(); box.getSize(size);
         const center = new THREE.Vector3(); box.getCenter(center);
@@ -111,7 +108,6 @@ function spawnAntekAntek(path, count, type) {
         const pad = 1; // margin nya
         const rCollider = 0.3 * Math.max(size.x, size.z) + pad;
 
-        // anti tumpang tindih
         if (overlapsSpawn(center.x, center.z, rCollider)) continue;
 
         _scene.add(antek);
@@ -138,22 +134,22 @@ export function initLoader(scene, getSeafloorHeight) {
   // Whale
   gltfLoader.load("./models/Whale.glb", (gltf) => {
     whaleRig = new THREE.Group(); _scene.add(whaleRig);
-    const whaleModel = gltf.scene; whaleModel.scale.set(3.2, 3.2, 3.2); whaleRig.add(whaleModel);
+    const whaleModel = gltf.scene; whaleModel.scale.set(15, 15, 15); whaleRig.add(whaleModel);
     const box = new THREE.Box3().setFromObject(whaleModel); whaleBottomOffset = -box.min.y;
     if (gltf.animations.length) { whaleMixer = new THREE.AnimationMixer(whaleModel); whaleMixer.clipAction(gltf.animations[0]).play(); }
     whaleRig.position.copy(whaleState.pos);
-  });
+  }, undefined, (err) => console.error("Gagal load Hiu:", err));
 
   // Manta
   gltfLoader.load("./models/Manta_ray.glb", (gltf) => {
     mantaRig = new THREE.Group(); _scene.add(mantaRig);
-    const mantaModel = gltf.scene; mantaModel.scale.set(2.5, 2.5, 2.5); mantaRig.add(mantaModel);
+    const mantaModel = gltf.scene; mantaModel.scale.set(5, 5, 5); mantaRig.add(mantaModel);
     if (gltf.animations.length) { mantaMixer = new THREE.AnimationMixer(mantaModel); mantaMixer.clipAction(gltf.animations[0]).play(); }
     mantaRig.position.copy(mantaState.pos);
   }, undefined, (err) => console.error("Gagal load Manta:", err));
 
   // Nemo
-    gltfLoader.load("./models/Nemo.glb", (gltf) => {
+  gltfLoader.load("./models/Nemo.glb", (gltf) => {
     nemoRig = new THREE.Group(); _scene.add(nemoRig);
     const nemoModel = gltf.scene; nemoModel.scale.set(1.5, 1.5, 1.5); nemoRig.add(nemoModel);
     if (gltf.animations.length) { nemoMixer = new THREE.AnimationMixer(nemoModel); nemoMixer.clipAction(gltf.animations[0]).play(); }
@@ -174,11 +170,11 @@ export function initLoader(scene, getSeafloorHeight) {
     const butterflyModel = gltf.scene; butterflyModel.scale.set(1.0, 1.0, 1.0); butterflyRig.add(butterflyModel);
     if (gltf.animations.length) { butterflyMixer = new THREE.AnimationMixer(butterflyModel); butterflyMixer.clipAction(gltf.animations[5]).play(); }
     butterflyRig.position.copy(butterflyState.pos);
+    console.log("Parrot anims:", gltf.animations.map(a => a.name));
   }, undefined, (err) => console.error("Gagal load Butterfly Fish:", err));
 
-
   spawnAntekAntek("./models/Kelp.glb", 200, "kelp");
-  spawnAntekAntek("./models/Rock 2.glb", 40, "rock");
+  spawnAntekAntek("./models/Rock 2.glb", 50, "rock");
   spawnAntekAntek("./models/Coral 2.glb", 40, "coralB");
   spawnAntekAntek("./models/Rock 1.glb", 20, "rock");
   spawnAntekAntek("./models/Rock 3.glb", 20, "rock");
